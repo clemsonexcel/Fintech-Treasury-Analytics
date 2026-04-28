@@ -82,13 +82,6 @@ FROM fintech.loan
 GROUP BY issue_year;
 ```
 
-- other queries to add in my sql script
-
--The "Fintech Specialty" Query:
-A query that calculates the Average Annual Income vs. Average Loan Amount per region. This shows you're thinking about "Affordability" metrics.
-
-The "Math Background" Query:
-A query using EXTRACT to see which Month or Quarter has the highest loan volume. This shows you can handle time-series trends.
 ## Phase 2: Analytics & Activation (Looker)
 
 The objective here was to translate the warehouse data into a High-Fidelity Executive Dashboard (Loan Insights) that allows the Treasury team to proactively monitor portfolio health and trigger intervention when risk thresholds are crossed.
