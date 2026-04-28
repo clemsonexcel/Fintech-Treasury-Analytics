@@ -37,10 +37,23 @@ I transformed raw, disconnected data into an analysis-ready environment through 
 
 - **Time-Series Aggregation:** Developed foundational queries to group loan counts by issue_year, providing the historical context needed for cash flow forecasting.
 
+#### Question 1: Geographic Risk (Where is our money?)
+- Task: Ingested state_region CSV and joined it with the loans table.
+- Result: Created a unified table that maps every dollar issued to a specific geographic region, allowing the Treasury to prevent "Over-reliance" on one area.
+
+#### Question 2: Loan Purpose (Why are they borrowing?)
+- Task: Extracted nested purpose data from the application_record Struct and deduplicated the entries.
+- Result: Standardized the "Loan Purpose" categories to enable accurate reporting on which borrowing reasons (e.g., inventory, expansion) are most common.
+
+#### Question 3: Growth & Cash Flow (How much are we lending?)
+- Task: Aggregated loan data to create the loan_count_by_year table.
+- Result: Provided the baseline trend of loan volume over time, a critical metric for monitoring the company’s "Outward" cash flow.
+
 _SQL Snippets_
 
 - The "Impact" Query: Annual Funding Velocity. This query goes beyond the basic count to show the actual capital (Cash Flow) moving out of the business.
-
+- Annual funding volume
+- 
 ```SQL
 SELECT 
     EXTRACT(YEAR FROM issue_date) AS funding_year,
@@ -51,7 +64,16 @@ FROM
 GROUP BY 1
 ORDER BY 1 DESC;
 ```
-
+```SQL
+SELECT 
+    EXTRACT(YEAR FROM issue_date) AS Year,
+    COUNT(loan_id) AS Total_Loans,
+    SUM(loan_amount) AS Total_Funded_Amount -- This is the 'Cash Out'
+FROM 
+    `your_project.fintech.loans`
+GROUP BY 1
+ORDER BY 1 DESC;
+```
 - Query to count loans issued each year
 ```SQL
 CREATE TABLE fintech.loan_count_by_year AS
@@ -60,6 +82,13 @@ FROM fintech.loan
 GROUP BY issue_year;
 ```
 
+- other queries to add in my sql script
+
+-The "Fintech Specialty" Query:
+A query that calculates the Average Annual Income vs. Average Loan Amount per region. This shows you're thinking about "Affordability" metrics.
+
+The "Math Background" Query:
+A query using EXTRACT to see which Month or Quarter has the highest loan volume. This shows you can handle time-series trends.
 ## Phase 2: Analytics & Activation (Looker)
 
 The objective here was to translate the warehouse data into a High-Fidelity Executive Dashboard (Loan Insights) that allows the Treasury team to proactively monitor portfolio health and trigger intervention when risk thresholds are crossed.
