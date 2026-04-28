@@ -2,79 +2,48 @@
 
 Loan Portfolio & Treasury Performance for TheLook Fintech.
 
-The Problem: TheLook Fintech needed a scalable way to track loan health and treasury growth to support their rapid scaling initiative.
+- The Problem: TheLook Fintech needed a scalable way to track loan health and treasury growth to support their rapid scaling initiative.
+- The Solution: Developed a cloud-based end-to-end pipeline using **BigQuery** for data engineering and **Looker Enterprise** for self-service business intelligence.
 
-The Solution: Developed a cloud-based end-to-end pipeline using BigQuery for data engineering and Looker Enterprose for self-service business intelligence.
-
-
-## The Tehnical Stack
+## The Technical Stack
 - Data Warehouse: Google BigQuery (SQL)
 - BI & Visualization: Looker Enterprise
 - Cloud Infrastructure: Google Cloud Platform (GCP)
-- Methodology: ETL (Extract, Transform, Load), Data Modeling, and Stakeholder Reporting.
-
+- Methodology: ETL (Extract, Transform, Load), Schema Design, Data Modeling, and Stakeholder Reporting.
 
 # The Data Journey
 
 ## Phase 1: Data Engineering & Warehousing (Big Query)
 
-The Treasury department required a centralized data warehouse to monitor three critical pillars of their scaling strategy:
+The Treasury department required a centralized data warehouse to monitor three critical pillars: Cash Flow Predictability, Risk Diversification, and Borrower Intent. I transformed raw, disconnected data into an analysis-ready environment through the following steps:
 
-1. **Cash Flow Predictability:** Monitoring monthly and annual loan funding volumes.
-2. **Risk Diversification:** Tracking geographic loan distribution to avoid regional over-reliance.
-3. **Borrower Intent:** Identifying the primary reasons for loan applications to predict repayment health.
+- **Cloud Data Ingestion (Geographic Risk):** Imported regional classification data from GCP Cloud Storage via CSV. By joining this with the core loans table, I created a unified view that maps every dollar issued to a specific region, allowing Treasury to prevent regional over-reliance.
 
-### Key Technical Tasks
-I transformed raw, disconnected data into an analysis-ready environment through the following steps:
+- **Data Enrichment & Modeling (Growth & Cash Flow):** Used CTEs and JOINs to merge customer profiles with loan records. I materialized these into a `loan_with_region` table and developed foundational aggregations (e.g., `loan_count_by_year`) to provide the historical context needed for cash flow forecasting.
 
-- **Cloud Data Ingestion:** Scaled the dataset by importing regional classification data from GCP Cloud Storage via CSV, enabling location-based analytics.
+- **Parsing Complex Structures (Borrower Intent):** Utilized dot notation to navigate BigQuery Records (Structs), extracting nested data from the application_record column to isolate the specific purpose of each loan. This transformed semi-structured metadata into a clean, queryable field for analyzing borrower motivations.
 
-- **Data Enrichment & Modeling:** Used CTEs and JOINs to merge customer profiles with loan records and the new regional data, materializing a unified loan_region table, enabling risk-concentration analysis by territory.
+- **Data Integrity & Deduplication:** Cleaned the extracted metadata to create a "Golden Record" of unique loan purposes. This standardized the categories, enabling accurate reporting on whether inventory, expansion, or other factors drive borrowing.
 
-- **Parsing Complex Structures:** Navigated BigQuery Records (Structs) using dot notation to extract granular data from the application_record column.
-
-- **Data Integrity & Deduplication:** Cleaned the extracted metadata to create a "Golden Record" of unique loan purposes, ensuring reporting in the BI layer would be accurate and free of noise.
-
-- **Time-Series Aggregation:** Developed foundational queries to group loan counts by issue_year, providing the historical context needed for cash flow forecasting.
-
-#### Question 1: Geographic Risk (Where is our money?)
-- Task: Ingested state_region CSV and joined it with the loans table.
-- Result: Created a unified table that maps every dollar issued to a specific geographic region, allowing the Treasury to prevent "Over-reliance" on one area.
-
-#### Question 2: Loan Purpose (Why are they borrowing?)
-- Task: Extracted nested purpose data from the application_record Struct and deduplicated the entries.
-- Result: Standardized the "Loan Purpose" categories to enable accurate reporting on which borrowing reasons (e.g., inventory, expansion) are most common.
-
-#### Question 3: Growth & Cash Flow (How much are we lending?)
-- Task: Aggregated loan data to create the loan_count_by_year table.
-- Result: Provided the baseline trend of loan volume over time, a critical metric for monitoring the company’s "Outward" cash flow.
 
 _SQL Snippets_
-
-- The "Impact" Query: Annual Funding Velocity. This query goes beyond the basic count to show the actual capital (Cash Flow) moving out of the business.
-- Annual funding volume
-- 
+1. Annual Funding Velocity
+   
+_Calculates total funded capital by year to track historical cash flow and liquidity trends._
 ```SQL
 SELECT 
     EXTRACT(YEAR FROM issue_date) AS funding_year,
     COUNT(loan_id) AS total_loans_issued,
     ROUND(SUM(loan_amount), 2) AS total_capital_funded
 FROM 
-    `thelook_fintech.loans`
+    fintech.loan
 GROUP BY 1
 ORDER BY 1 DESC;
 ```
-```SQL
-SELECT 
-    EXTRACT(YEAR FROM issue_date) AS Year,
-    COUNT(loan_id) AS Total_Loans,
-    SUM(loan_amount) AS Total_Funded_Amount -- This is the 'Cash Out'
-FROM 
-    `your_project.fintech.loans`
-GROUP BY 1
-ORDER BY 1 DESC;
-```
-- Query to count loans issued each year
+
+2. Table Materialization: Annual Loan Volume
+   
+_Groups loan counts by year to build the foundation for time-series trend analysis._
 ```SQL
 CREATE TABLE fintech.loan_count_by_year AS
 SELECT issue_year, count(loan_id) AS loan_count
@@ -97,9 +66,9 @@ The objective here was to translate the warehouse data into a High-Fidelity Exec
 
 3. **High-Value Client Segmentation:** Structured a "Top 10" data table focusing on customer liquidity (Annual Income) and debt cost (Interest Rates) to monitor the profiles of the company's most significant borrowers.
 
-4. **Data Activation & Automation:**  Implemented Auto-Refresh logic tailored to the data's "velocity."
-    - Set the Capital KPI to refresh hourly for real-time liquidity monitoring.
-    - Set the Customer & State tables to refresh daily for long-term trend alignment.
+4. **Data Activation & Automation:**  Implemented Auto-Refresh logic tailored to the data velocity.
+    - Low-Latency Monitoring: Set the Capital KPI to refresh hourly for immediate visibility into liquidity changes.
+    - Trend Alignment: Set the Customer & State tables to refresh daily to optimize compute resources while maintaining up-to-date reporting.
 
 5. **UI/UX Design:** Applied a cohesive color palette and arranged the layout for a "logical read," ensuring the most critical risk metrics are positioned at the top of the dashboard for immediate stakeholder impact.
 
@@ -116,4 +85,8 @@ The "Loan Insights" dashboard successfully addressed four critical business inqu
 _Figure 1: Loan Insights Dashboard. Note the red conditional formatting on the 'Total Outstanding' metric, triggered by the $3M risk threshold._
 
 ## Future Considerations
-- Implement a Linear Regression model to predict future loan defaults based on the annual_income and loan_amount
+- Predictive Risk Modeling: Implement a Logistic Regression model to classify the probability of loan default based on debt-to-income ratios and employment history. 
+
+- Customer Segmentation (RFM): Transition from general portfolio monitoring to a behavioral analysis framework (Recency, Frequency, Monetary) to identify high-value borrowers and at-risk segments.
+
+- Automated Anomaly Detection: Configure Looker Alerts using standard deviation thresholds to automatically notify stakeholders of unusual spikes in loan applications or sudden drops in repayment volume. 
