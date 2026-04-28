@@ -27,3 +27,14 @@ SELECT issue_year, count(loan_id) AS loan_count
 FROM fintech.loan
 GROUP BY issue_year;
 
+/*- other queries to add in my sql script
+
+-The "Fintech Specialty" Query:
+A query that calculates the Average Annual Income vs. Average Loan Amount per region. This shows you're thinking about "Affordability" metrics.
+
+The "Math Background" Query:
+A query using EXTRACT to see which Month or Quarter has the highest loan volume. This shows you can handle time-series trends.
+*/
+
+
+
