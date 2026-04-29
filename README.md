@@ -34,7 +34,7 @@ _Calculates total funded capital by year to track historical cash flow and liqui
 SELECT 
     EXTRACT(YEAR FROM issue_date) AS funding_year,
     COUNT(loan_id) AS total_loans_issued,
-    ROUND(SUM(loan_amount), 2) AS total_capital_funded
+    SUM(loan_amount) AS total_capital_funded
 FROM 
     fintech.loan
 GROUP BY 1
