@@ -1,77 +1,119 @@
--- Annual funding volume
--- he "Impact" Query: Annual Funding Velocity. This query goes beyond the basic count to show the actual capital (Cash Flow) moving out of the business.
-
-SELECT 
-    EXTRACT(YEAR FROM issue_date) AS funding_year,
-    COUNT(loan_id) AS total_loans_issued,
-    ROUND(SUM(loan_amount), 2) AS total_capital_funded
-FROM 
-    `thelook_fintech.loans`
-GROUP BY 1
-ORDER BY 1 DESC;
-
-
-
--- number of loans issued each year
-CREATE TABLE fintech.loan_count_by_year AS
-SELECT issue_year, count(loan_id) AS loan_count
-FROM fintech.loan
-GROUP BY issue_year;
-   
 -- ============================================================
 -- PROJECT: TheLook Fintech Loan Portfolio Analysis
--- BY EXCEL 
+-- BY EXCEL
 -- PURPOSE: ETL, Data Modeling, and Risk Analytics
 -- ============================================================
 
--- DATA ENGINEERING & CLEANING
--- Extracting nested purpose data and deduplicating
-CREATE OR REPLACE TABLE fintech.loan_purposes AS ...
-
-    CSV Integration: The query that joined your newly imported state_region table with the loans table.
 
 
+-- CSV Integration: The query that joined your newly imported state_region table with the loans table.
+-- query that loads the location csv into the fintech data 
+LOAD DATA OVERWRITE fintech.state_region
+(
+state_region string,
+subregion string,
+region string
+    )
+FROM FILES (
+format = 'CSV',
+uris = ['gs://sureskills..thelink .../state_region_mapping/state_region_*.csv']);
 
-JSON/Struct Parsing: The query using dot notation to extract purpose from the application_record.
-
-Deduplication: The SELECT DISTINCT query that created your clean list of loan purposes.
-
--- BUSINESS INTELLIGENCE QUERIES
--- Calculating Geographic Risk by State/Region
-SELECT ... FROM loan_region ...
-       Regional Distribution: A query counting loans and summing amounts by Region and State.
-
-Loan Count by Year: Your CREATE TABLE query for historical volume.
+-- query to get loans and the regions
+SELECT lo.loan_id,
+        lo.loan_amount,
+        sr.region 
+FROM fintech.loan lo 
+INNER JOIN fintech.state_region sr 
+ON lo.state = sr.state;
 
 
+-- create a table of loans and regions
+CREATE OR REPLACE TABLE fintech.loan_with_region AS 
+SELECT lo.loan_id,
+        lo.loan_amount,
+        sr.region 
+FROM fintech.loan lo 
+INNER JOIN fintech.state_region sr 
+ON lo.state = sr.state;
 
--- ADVANCED ANALYTICS (BONUS)
--- Calculating Debt-to-Income Ratio to assess borrower health
-SELECT ...
 
-  Metric 1: Average Loan Utilization (The "Affordability" Check)
+-- Struct Parsing: The query using dot notation to extract purpose from the application_record.
+SELECT loan_id, application.purpose
+FROM fintech.loan;
 
-What it shows: Are people with lower incomes taking out huge loans?
 
-Query: SELECT income_bracket, AVG(loan_amount/annual_income) as debt_to_income_ratio...
+-- Deduplication: The SELECT DISTINCT query that created your clean list of loan purposes.
+CREATE TABLE fintech.loan_purposes AS
+SELECT DISTINCT application.purpose
+FROM fintech.loan;
 
-Metric 2: Regional Default Risk Concentration
 
-What it shows: Which region has the highest percentage of "Late" or "Defaulted" loans?
+-- Regional Distribution
 
-Query: A query that calculates (Count of Late Loans / Total Loans) * 100 grouped by Region.
+--   Regional Distribution: A query counting loans and summing amounts by Region and State.
 
-Metric 3: Seasonality Analysis
+-- query to get the total loan issued each year 
+SELECT issue_year, sum(loan_amount) AS total_amount
+FROM fintech.loan 
+GROUP BY issue_year;
 
-What it shows: Are more loans taken out in Q4 versus Q1?
 
-Query: Use EXTRACT(MONTH FROM issue_date) to see if there is a "peak" borrowing season.
+-- Loan Count by Year: Your CREATE TABLE query for historical volume.
+-- create table for number of loans issused each year 
+CREATE TABLE fintech.loan_count_by_year AS
+SELECT issue_year, count(loan_id) AS loan_count 
+FROM fintech.loan
+GROUP BY issue_year;
 
-    /*- other queries to add in my sql script
 
--The "Fintech Specialty" Query:
-A query that calculates the Average Annual Income vs. Average Loan Amount per region. This shows you're thinking about "Affordability" metrics.
+-- Metric: Delinquency Rate by Region
+-- Purpose: Identify geographic clusters with high default risk to inform future credit policies.
 
-The "Math Background" Query:
-A query using EXTRACT to see which Month or Quarter has the highest loan volume. This shows you can handle time-series trends.
-*/
+SELECT 
+    sr.region,
+    COUNT(lo.loan_id) AS total_loans,
+    ROUND(COUNTIF(lo.loan_status = 'Default' OR lo.loan_status = 'Late') / COUNT(lo.loan_id) * 100, 2) AS delinquency_rate_percentage
+FROM 
+    fintech.loan lo
+JOIN 
+    fintech.state_region sr ON lo.state = sr.state
+GROUP BY 1
+ORDER BY delinquency_rate_percentage DESC;
+
+
+-- BORROWER PROFILING
+-- Metric: Average Debt-to-Income Ratio (DTI) by Loan Purpose
+-- Purpose: Assess if certain loan categories (e.g., Small Business vs. Debt Consolidation) carry higher debt burdens.
+
+SELECT 
+    application.purpose,
+    ROUND(AVG(loan_amount / annual_income), 4) AS avg_dti_ratio,
+    ROUND(MAX(loan_amount / annual_income), 4) AS max_dti_ratio
+FROM 
+    fintech.loan
+GROUP BY 1
+ORDER BY avg_dti_ratio DESC;
+--What it shows: Are people with lower incomes taking out huge loans?
+
+
+-- TIME-SERIES ANALYSIS
+-- Metric: Month-over-Month Funding Growth
+-- Purpose: Track the momentum of capital disbursement to ensure liquidity matches scaling targets.
+
+SELECT 
+    FORMAT_DATE('%Y-%m', issue_date) AS month,
+    SUM(loan_amount) AS monthly_volume,
+    LAG(SUM(loan_amount)) OVER (ORDER BY FORMAT_DATE('%Y-%m', issue_date)) AS previous_month_volume,
+    ROUND((SUM(loan_amount) - LAG(SUM(loan_amount)) OVER (ORDER BY FORMAT_DATE('%Y-%m', issue_date))) / 
+          LAG(SUM(loan_amount)) OVER (ORDER BY FORMAT_DATE('%Y-%m', issue_date)) * 100, 2) AS mom_growth_percentage
+FROM fintech.loan
+GROUP BY 1
+ORDER BY 1;
+
+
+    LAG(SUM(loan_amount)) OVER (ORDER BY FORMAT_DATE('%Y-%m', issue_date)) AS previous_month_volume,
+    ROUND((SUM(loan_amount) - LAG(SUM(loan_amount)) OVER (ORDER BY FORMAT_DATE('%Y-%m', issue_date))) / 
+          LAG(SUM(loan_amount)) OVER (ORDER BY FORMAT_DATE('%Y-%m', issue_date)) * 100, 2) AS mom_growth_percentage
+FROM fintech.loan
+GROUP BY 1 -- Add this to group by the month
+ORDER BY 1;
