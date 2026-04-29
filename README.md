@@ -82,7 +82,7 @@ The "Loan Insights" dashboard successfully addressed four critical business inqu
 - **Targeting:** Identified the highest-income homeowners to assess the quality of the collateralized portfolio.
 
 
-![image](images/dashboard-screenshot.jpeg)
+![image](images/dashboard_screenshot.jpeg)
 _Loan Insights Dashboard. Note the red conditional formatting on the 'Total Outstanding' metric, triggered by the $3M risk threshold._
 
 ## Future Considerations
