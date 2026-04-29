@@ -72,6 +72,7 @@ The objective here was to translate the warehouse data into a High-Fidelity Exec
 
 5. **UI/UX Design:** Applied a cohesive color palette and arranged the layout for a "logical read," ensuring the most critical risk metrics are positioned at the top of the dashboard for immediate stakeholder impact.
 
+
 ### Strategic Impact (The "Results")
 The "Loan Insights" dashboard successfully addressed four critical business inquiries:
 
@@ -82,7 +83,7 @@ The "Loan Insights" dashboard successfully addressed four critical business inqu
 
 
 ![image](images/dashboard-screenshot.png)
-_Figure 1: Loan Insights Dashboard. Note the red conditional formatting on the 'Total Outstanding' metric, triggered by the $3M risk threshold._
+_Loan Insights Dashboard. Note the red conditional formatting on the 'Total Outstanding' metric, triggered by the $3M risk threshold._
 
 ## Future Considerations
 - Predictive Risk Modeling: Implement a Logistic Regression model to classify the probability of loan default based on debt-to-income ratios and employment history. 
